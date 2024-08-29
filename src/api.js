@@ -121,7 +121,7 @@ const computeIfMissing = (id, expiration, compute, errorGenerator=defaultErrorGe
     logger.debug('' + ((error && error.stack) || error));
     const status = APIError.getStatus(error);
     const data = Buffer.from(JSON.stringify(errorGenerator(error)));
-    return wrapDatabaseResponse(insertStatement.get(id, getExpiration(null), status, data));  
+    return wrapDatabaseResponse(insertStatement.get(id, getExpiration(null), status, data));
   });
 };
 
@@ -149,6 +149,33 @@ const getProjectMeta = async (projectId) => {
   });
 };
 
+const getProjectSource = async (projectId,projectToken) => {
+  if (!ScratchUtils.isValidIdentifier(projectId)) return wrapError(new APIError.BadRequest('Invalid project ID'));
+  /*metrics.projects++;
+  return computeIfMissing(id, (data) => {
+    if (!data) {
+      // Project is unshared, invalid, etc.
+      return now() + MINUTE * 2;
+    }
+    const text = data.toString();
+    const json = JSON.parse(text);
+    const token = json.project_token;
+    if (!token) return 0;
+    const unixTimestamp = +token.split('_')[0] * 1000;
+    if (!unixTimestamp) return 0;
+    // api.scratch.mit.edu has Cache-Control: max-age=240 and the tokens have a timestamp set 300
+    // seconds into the future for uncached responses. However that timestamp is sometimes wrong for
+    // unkown reasons, so we shouldn't wait for it to be close to expiry.
+    return unixTimestamp - SECOND * 120;
+  }, () => {*/
+  console.log(`https://projects.scratch.mit.edu/${projectId}?token=${projectToken}`)
+  const id = `projectssource/${projectId}`;
+  metrics.projectssource++;
+  return computeIfMissing(id, HOUR * 24, () => {
+    return apiQueue.queuePromise(`https://projects.scratch.mit.edu/${projectId}?token=${projectToken}`);
+  });
+  /*});*/
+};
 const getUser = async (username) => {
   if (!ScratchUtils.isValidUsername(username)) return wrapError(new APIError.BadRequest('Invalid username'));
   const id = `users/${username}`;
@@ -172,6 +199,8 @@ const getThumbnail = async (projectId) => {
   if (!ScratchUtils.isValidIdentifier(projectId)) return wrapError(new APIError.BadRequest('Invalid project ID'));
   metrics.thumbnailRaw++;
   const id = `thumbnails/${projectId}`;
+  logger.debug(`https://uploads.scratch.mit.edu/projects/thumbnails/${projectId}.png`);
+  console.log(`https://uploads.scratch.mit.edu/projects/thumbnails/${projectId}.png`)
   return computeIfMissing(id, HOUR * 6, () => {
     return imageQueue.queuePromise(`https://uploads.scratch.mit.edu/projects/thumbnails/${projectId}.png`);
   });
@@ -289,7 +318,10 @@ const getTTS = async (locale, gender, text) => {
   });
 };
 
-const getAsset = (md5ext) => {
+const getAsset = async (md5ext) => {
+  logger.debug(md5ext);
+
+  console.log(md5ext);
   if (!ScratchUtils.isValidAssetMd5ext(md5ext)) return wrapError(new APIError.BadRequest('Invalid asset ID'));
   const id = `assets/${md5ext}`;
   metrics.assets++;
@@ -309,6 +341,7 @@ const removeEverything = () => {
 
 module.exports = {
   getProjectMeta,
+  getProjectSource,
   getUser,
   getStudioPage,
   getThumbnail,
