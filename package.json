@@ -11,7 +11,7 @@
   "license": "MIT",
   "dependencies": {
     "abort-controller": "^3.0.0",
-    "better-sqlite3": "^11.1.2",
+    "better-sqlite3": "^11.3.0",
     "cors": "^2.8.5",
     "express": "^4.19.2",
     "node-fetch": "^2.7.0",
